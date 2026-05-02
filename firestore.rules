@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // --- Validations ---
+    function isValidOrder(data) {
+      return data.guestId == request.auth.uid
+          && data.restaurantId is string
+          && data.items is list
+          && data.items.size() > 0
+          && data.items.size() <= 20
+          && data.total is number
+          && data.total >= 0
+          && data.status == 'pending'
+          && data.roomNumber is string
+          && data.roomNumber.size() <= 10
+          && data.createdAt == request.time;
+    }
+
+    function isValidGuest(data) {
+      return data.id == request.auth.uid
+          && data.name is string
+          && data.name.size() <= 100
+          && data.roomNumber is string
+          && data.roomNumber.size() <= 10
+          && data.email == request.auth.token.email;
+    }
+
+    // --- Rules ---
+
+    // Guests
+    match /guests/{guestId} {
+      allow get: if isOwner(guestId) || isAdmin();
+      allow create: if isOwner(guestId) && isValidGuest(incoming());
+      allow update: if isOwner(guestId) && isValidGuest(incoming()) 
+                     && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'roomNumber', 'points']);
+    }
+
+    // Restaurants (Read-only for all signed-in users)
+    match /restaurants/{restaurantId} {
+      allow get, list: if isSignedIn();
+      
+      match /menu/{itemId} {
+        allow get, list: if isSignedIn();
+      }
+    }
+
+    // Orders
+    match /orders/{orderId} {
+      allow get: if isSignedIn() && (isOwner(existing().guestId) || isAdmin());
+      allow list: if isSignedIn() && (resource.data.guestId == request.auth.uid || isAdmin());
+      
+      allow create: if isVerified() 
+                    && isValidOrder(incoming())
+                    && exists(/databases/$(database)/documents/guests/$(request.auth.uid))
+                    && exists(/databases/$(database)/documents/restaurants/$(incoming().restaurantId));
+      
+      allow update: if isSignedIn() && (
+        // Admin can update status
+        (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) && incoming().updatedAt == request.time) ||
+        // User can cancel if still pending
+        (isOwner(existing().guestId) && existing().status == 'pending' && incoming().status == 'cancelled' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) && incoming().updatedAt == request.time)
+      );
+    }
+
+    // Admin list (Protected)
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && request.auth.uid == adminId;
+    }
+  }
+}

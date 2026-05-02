@@ -1,0 +1,10 @@
+{
+  "name": "HotelDine",
+  "description": "Exclusive room-side dining platform for hotel guests to order from curated local restaurants with special discounts.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "Firebase"
+  ]
+}

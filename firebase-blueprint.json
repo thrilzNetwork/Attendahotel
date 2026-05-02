@@ -1,0 +1,100 @@
+{
+  "entities": {
+    "hotelGuest": {
+      "title": "Hotel Guest",
+      "description": "A guest staying at the hotel.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "roomNumber": { "type": "string" },
+        "checkedIn": { "type": "boolean" },
+        "points": { "type": "number" },
+        "email": { "type": "string", "format": "email" }
+      },
+      "required": ["id", "name", "roomNumber", "email"]
+    },
+    "restaurant": {
+      "title": "Restaurant",
+      "description": "A local restaurant collaborating with the hotel.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "cuisine": { "type": "string" },
+        "rating": { "type": "number" },
+        "deliveryTime": { "type": "string" },
+        "image": { "type": "string" },
+        "discountPercent": { "type": "number" },
+        "isFeatured": { "type": "boolean" }
+      },
+      "required": ["id", "name", "description", "cuisine"]
+    },
+    "menuItem": {
+      "title": "Menu Item",
+      "description": "An item on a restaurant's menu.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "restaurantId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "discountedPrice": { "type": "number" },
+        "category": { "type": "string" },
+        "image": { "type": "string" }
+      },
+      "required": ["id", "restaurantId", "name", "price"]
+    },
+    "order": {
+      "title": "Order",
+      "description": "A food order placed by a guest.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "guestId": { "type": "string" },
+        "restaurantId": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "menuItemId": { "type": "string" },
+              "name": { "type": "string" },
+              "quantity": { "type": "number" },
+              "price": { "type": "number" }
+            }
+          }
+        },
+        "total": { "type": "number" },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "preparing", "delivering", "completed", "cancelled"]
+        },
+        "roomNumber": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "guestId", "restaurantId", "items", "total", "status", "roomNumber", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/guests/{guestId}": {
+      "schema": "hotelGuest",
+      "description": "Profiles for hotel guests."
+    },
+    "/restaurants/{restaurantId}": {
+      "schema": "restaurant",
+      "description": "List of partner restaurants."
+    },
+    "/restaurants/{restaurantId}/menu/{itemId}": {
+      "schema": "menuItem",
+      "description": "Menu for each restaurant."
+    },
+    "/orders/{orderId}": {
+      "schema": "order",
+      "description": "Orders placed through the system."
+    }
+  }
+}
